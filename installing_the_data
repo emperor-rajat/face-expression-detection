@@ -1,0 +1,8 @@
+# Force download and overwrite existing files
+!kaggle datasets download -d msambare/fer2013 --force
+!unzip -q -o fer2013.zip  # -o flag overwrites without prompting
+
+print("✅ FER2013 downloaded and extracted successfully!")
+
+
+
