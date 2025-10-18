@@ -1,0 +1,37 @@
+import torchvision
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+import os
+import PIL
+from PIL import Image
+
+class ImageFolderDataset(Dataset):
+  def __init__(self, img_dir, emotion_dict,transform=None):
+     super().__init__()
+
+     self.img_dir = img_dir
+     self.transform= transform
+     self.emotion = emotion_dict
+
+     self.image_paths=[]
+     self.labels=[]
+
+     for emotion_name, emotion_id in emotion_dict.items():
+      emotion_dir = os.path.join(img_dir,emotion_name)
+      if os.path.exists(emotion_dir):
+        for img_file in os.listdir(emotion_dir):
+          if img_file.lower().endswith((".jpg",".png",".jpeg")):
+            self.image_paths.append(os.path.join(emotion_dir, img_file))
+            self.labels.append(emotion_id)
+
+  def __len__(self):
+    return len(self.image_paths)
+
+  def __getitem__(self, index):
+    img_path = self.image_paths[index]
+    img = Image.open(img_path).convert("L")
+    label = self.labels[index]
+
+    if self.transform:
+      img = self.transform(img)
+    return img, torch.tensor(label,dtype=torch.long)
