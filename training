@@ -23,7 +23,7 @@ def train_model(model, train_loader, test_loader, criterion, optimizer, schedule
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
         best_val_loss = checkpoint.get('val_loss', float('inf'))
-        print(f"📊 Resuming from epoch {start_epoch}")
+        print(f" Resuming from epoch {start_epoch}")
     
     for epoch in range(start_epoch, num_epochs):
         # Training phase
@@ -118,8 +118,8 @@ def train_model(model, train_loader, test_loader, criterion, optimizer, schedule
     
     return train_losses, val_losses, val_accuracies
 
+# Start training
 print(" Starting fresh training...")
 train_losses, val_losses, val_accuracies = train_model(
-    net1, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs=30
+    net, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs=30
 )
-
