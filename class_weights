@@ -1,0 +1,30 @@
+emotion_dict = {
+    "angry":0,
+    "disgust":1,
+    "fear":2,
+    "happy":3,
+    "neutral":4,
+    "sad":5,
+    "surprise":6
+}
+
+def calculate_class_weights():
+  train_class_counts={
+    "angry":3995,
+    "disgust":436,
+    "fear":4097,
+    "happy":7215,
+    "neutral":4965,
+    "sad":4830,
+    "surprise":3171
+  }
+  class_weights = []
+  total_samples = sum(train_class_counts.values())
+
+  for emotion in ["angry","disgust", "fear", "happy", "neutral", "sad", "surprise"]:
+    weight = total_samples/(len(train_class_counts) * train_class_counts[emotion])
+    class_weights.append(weight)
+    
+  class_weights = torch.tensor(class_weights,dtype=torch.float)
+  class_weights = (class_weights/class_weights.sum())* len(class_weights)
+  return class_weights
