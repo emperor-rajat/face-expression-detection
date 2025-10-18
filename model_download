@@ -1,0 +1,9 @@
+from google.colab import files
+
+# Download the traced model for webcam use
+files.download('emotion_model_traced.pt')
+
+# Also download the full model as backup
+files.download('emotion_recognition_model.pth')
+
+print(" Models downloaded! Ready for webcam deployment in VS Code.")
