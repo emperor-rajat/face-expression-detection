@@ -1,0 +1,78 @@
+class EmotionDetector:
+    def __init__(self, model_path):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device {self.device}")
+
+        # Load TorchScript model directly
+        self.model = torch.jit.load(model_path, map_location=self.device)
+        self.model.eval()
+
+        # Emotion labels
+        self.emotions = {
+            0: "Angry",
+            1: "Disgust",
+            2: "Fear",
+            3: "Happy",
+            4: "Neutral",
+            5: "Sad",
+            6: "Surprise"
+        }
+        
+        # same transforms as training
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,),(0.5,))
+        ])
+
+        # Use OpenCV's built-in cascade classifier
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+
+    def preprocess_face(self, face_roi):
+        # Convert directly to grayscale (no need for RGB conversion first)
+        face_gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+        face_resized = cv2.resize(face_gray, (48, 48))
+        pil_img = Image.fromarray(face_resized)   
+        tensor_img = self.transform(pil_img)
+        tensor_img = tensor_img.unsqueeze(0)  # Add batch dimension
+        return tensor_img.to(self.device)
+
+    def detect_emotion(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, 1.1, 5)
+        results = []
+        
+        for (x, y, w, h) in faces:
+            face_roi = image[y:y+h, x:x+w]
+            input_tensor = self.preprocess_face(face_roi)
+
+            with torch.no_grad():
+                outputs = self.model(input_tensor)
+                probabilities = F.softmax(outputs, dim=1)
+                confidence, predicted = torch.max(probabilities, 1)
+                emotion = self.emotions[predicted.item()]
+                confidence = confidence.item()
+
+                results.append({
+                    "bbox": (x, y, w, h),
+                    "emotion": emotion,
+                    "confidence": confidence
+                })
+        
+        return results
+  
+    def draw_results(self, image, results):
+        for result in results:
+            x, y, w, h = result["bbox"]
+            emotion = result["emotion"]
+            confidence = result["confidence"]
+
+            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            label = f"{emotion}: {confidence:.2f}"
+            label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+
+            cv2.rectangle(image, (x, y-label_size[1]-10),
+                         (x+label_size[0], y), (0, 255, 0), -1)
+
+            cv2.putText(image, label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+        
+        return image
