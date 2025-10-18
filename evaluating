@@ -1,0 +1,87 @@
+def evaluate_model(model, test_loader, criterion):
+    model.eval()
+    test_loss = 0.0
+    correct = 0
+    total = 0
+    all_predictions = []
+    all_targets = []
+    
+    # Get the device from the model
+    device = next(model.parameters()).device
+    print(f" Evaluating on device: {device}")
+    
+    with torch.no_grad():
+        for data, target in tqdm(test_loader, desc="Testing"):
+            # Move data to the same device as model
+            data, target = data.to(device), target.to(device)
+            
+            output = model(data)
+            loss = criterion(output, target)
+            test_loss += loss.item()
+            
+            _, predicted = torch.max(output.data, 1)
+            total += target.size(0)
+            correct += (predicted == target).sum().item()
+            
+            # Move back to CPU for storage
+            all_predictions.extend(predicted.cpu().numpy())
+            all_targets.extend(target.cpu().numpy())
+    
+    accuracy = 100 * correct / total
+    avg_loss = test_loss / len(test_loader)
+    
+    print(f"\n Final Test Results:")
+    print(f"   Test Loss: {avg_loss:.4f}")
+    print(f"   Test Accuracy: {accuracy:.2f}%")
+    print(f"   Correct: {correct}/{total}")
+    print(f"   Device: {device}")
+    
+    return accuracy, all_predictions, all_targets
+
+# Save the final model in a webcam-ready format
+def save_final_model(model, class_names, transformation_info):
+    # Get device info
+    device = next(model.parameters()).device
+    print(f" Saving model from device: {device}")
+    
+    # Save model architecture + weights
+    model_info = {
+        'model_state_dict': model.state_dict(),
+        'model_architecture': 'Deep_Emotion',
+        'class_names': class_names,
+        'input_size': (1, 48, 48),
+        'transform_mean': 0.5,
+        'transform_std': 0.5,
+        'emotion_dict': emotion_dict,
+        'trained_on_device': str(device)
+    }
+    
+    torch.save(model_info, 'emotion_recognition_model.pth')
+    
+    # Also save as traced model for better compatibility
+    model.eval()
+    
+    # Create a sample input for tracing (on CPU for maximum compatibility)
+    sample_input = torch.randn(1, 1, 48, 48)
+    
+    # Trace the model - move to CPU for tracing to ensure compatibility
+    model_cpu = model.cpu()
+    traced_model = torch.jit.trace(model_cpu, sample_input)
+    torch.jit.save(traced_model, 'emotion_model_traced.pt')
+    
+    # Move model back to original device
+    model.to(device)
+    
+    print(" Models saved successfully!")
+    print("   - emotion_recognition_model.pth (for retraining)")
+    print("   - emotion_model_traced.pt (for webcam inference - CPU compatible)")
+    print(f"   - Original training device: {device}")
+
+# Class names for reference
+class_names = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]
+
+# Save the models
+save_final_model(net, class_names, transformation)
+
+# Evaluate the trained model
+final_accuracy, predictions, targets = evaluate_model(net, test_loader, criterion)
